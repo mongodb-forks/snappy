@@ -145,7 +145,7 @@ inline void FixedSizeMemMove(void* dest, const void* src) {
   }
 }
 
-#ifdef __aarch64__ // Implies neon support
+#ifdef SNAPPY_HAVE_NEON
 template <>
 SNAPPY_ATTRIBUTE_ALWAYS_INLINE
 inline void FixedSizeMemMove<32>(void* dest, const void* src) {
