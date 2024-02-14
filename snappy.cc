@@ -115,7 +115,7 @@ SNAPPY_ATTRIBUTE_ALWAYS_INLINE
 inline void FixedSizeMemMove(void* dest, const void* src) {
   memmove(dest, src, SIZE);
 }
-#else
+#else // defined(__GNUC__) && !defined(__clang__)
 
 template <size_t SIZE>
 SNAPPY_ATTRIBUTE_ALWAYS_INLINE
@@ -132,7 +132,7 @@ inline void FixedSizeMemMove(void* dest, const void* src) {
   }
 }
 
-#ifdef __aarch64__ // Implies neon support
+#if SNAPPY_HAVE_VECTOR_BYTE_SHUFFLE
 template <>
 SNAPPY_ATTRIBUTE_ALWAYS_INLINE
 inline void FixedSizeMemMove<32>(void* dest, const void* src) {
@@ -154,8 +154,8 @@ inline void FixedSizeMemMove<64>(void* dest, const void* src) {
   V128_StoreU(reinterpret_cast<V128*>(dest) + 2, c);
   V128_StoreU(reinterpret_cast<V128*>(dest) + 3, d);
 }
-#endif
-#endif
+#endif // SNAPPY_HAVE_VECTOR_BYTE_SHUFFLE
+#endif // defined(__GNUC__) && !defined(__clang__)
 
 // We translate the information encoded in a tag through a lookup table to a
 // format that requires fewer instructions to decode. Effectively we store
@@ -1108,7 +1108,7 @@ void MemCopy64(char* dst, const void* src, size_t size) {
   // might copy more than size bytes the copy still might overlap past size.
   // E.g. if src and dst appear consecutively in memory (src + size >= dst).
   // TODO: Investigate wider copies on other platforms.
-#if defined(__x86_64__) && defined(__AVX__)
+#if SNAPPY_HAVE_BMI2 || SNAPPY_HAVE_X86_CRC32
   assert(kShortMemCopy <= 32);
   __m256i data = _mm256_lddqu_si256(static_cast<const __m256i *>(src));
   _mm256_storeu_si256(reinterpret_cast<__m256i *>(dst), data);
@@ -1117,7 +1117,7 @@ void MemCopy64(char* dst, const void* src, size_t size) {
     data = _mm256_lddqu_si256(static_cast<const __m256i *>(src) + 1);
     _mm256_storeu_si256(reinterpret_cast<__m256i *>(dst) + 1, data);
   }
-#elif defined(__aarch64__)
+#elif SNAPPY_HAVE_VECTOR_BYTE_SHUFFLE
   // Emperically it is faster to just copy all 64 rather than branching.
   (void)kShortMemCopy;
   (void)size;
